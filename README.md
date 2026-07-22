@@ -190,6 +190,77 @@ Current policies allow anon read/write (single-PIN, single-user demo). Tighten R
 
 ---
 
+## Deploy ke Vercel (dari GitHub)
+
+TanStack Start di Vercel memakai **Nitro** (`nitro` + plugin di `vite.config.ts`). Saat build di Vercel, env `VERCEL=1` otomatis mengaktifkan preset output `.vercel/output`.
+
+### 1. Pastikan config sudah di repo
+
+Sudah disiapkan di project ini:
+
+- dependency `nitro`
+- `vite.config.ts` → plugin `nitro()`
+- `vercel.json` → `buildCommand` / `installCommand`
+- script `npm run build`
+
+Push perubahan ini ke GitHub dulu:
+
+```bash
+git add package.json package-lock.json vite.config.ts vercel.json README.md
+git commit -m "chore: enable Nitro for Vercel deploy"
+git push
+```
+
+### 2. Import project di Vercel
+
+1. Buka [vercel.com/new](https://vercel.com/new)
+2. **Import** repo GitHub Meridian
+3. Framework Preset: biarkan **Other** / deteksi otomatis (jangan pilih Next.js)
+4. Root Directory: `.` (root repo)
+5. Build & Output (otomatis dari `vercel.json`):
+   - **Install:** `npm install`
+   - **Build:** `npm run build`
+6. **Deploy**
+
+Setelah sukses, URL-nya mirip `https://meridian-xxx.vercel.app`.
+
+### 3. Environment variables (opsional)
+
+Kalau pakai Supabase, di Vercel → Project → **Settings → Environment Variables**:
+
+| Name | Value |
+|------|--------|
+| `VITE_SUPABASE_URL` | `https://xxx.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | anon key |
+
+Lalu **Redeploy**.
+
+Tanpa env, app tetap jalan dengan **LocalStorage** di browser user.
+
+### 4. Redeploy otomatis
+
+Setiap `git push` ke branch production (biasanya `main`) → Vercel build ulang.
+
+### CLI (opsional)
+
+```bash
+npm i -g vercel
+vercel login
+vercel          # preview
+vercel --prod   # production
+```
+
+### Troubleshooting
+
+| Masalah | Cek |
+|---------|-----|
+| Build gagal / 404 | Pastikan `nitro` terpasang & `nitro()` ada di `vite.config.ts` |
+| Output kosong | Build harus menghasilkan `.vercel/output` (preset Vercel) |
+| Env tidak kebaca | Nama harus `VITE_*`, lalu redeploy |
+| PIN / data hilang | Data LocalStorage per-browser; Supabase untuk sinkron multi-device |
+
+---
+
 ## License
 
 Private project (`meridian`).
