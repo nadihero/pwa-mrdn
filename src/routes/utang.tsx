@@ -5,6 +5,7 @@ import {
   Pill,
   SectionHeader,
 } from '../components/ui'
+import { confirmDelete } from '../lib/confirm'
 import { daysUntil, formatDateId, formatRp } from '../lib/format'
 import { removeDebt, toggleDebtPaid } from '../lib/store'
 import { useFinance } from '../lib/use-finance'
@@ -93,7 +94,12 @@ function UtangPage() {
                   <button
                     type="button"
                     className="text-ink-faint hover:text-red-300"
-                    onClick={() => removeDebt(d.id)}
+                    aria-label="Hapus"
+                    onClick={() => {
+                      if (confirmDelete(`utang “${d.name}”`)) {
+                        void removeDebt(d.id)
+                      }
+                    }}
                   >
                     <i className="iconoir-trash text-base" aria-hidden />
                   </button>
@@ -131,7 +137,12 @@ function UtangPage() {
                 <button
                   type="button"
                   className="text-ink-faint hover:text-red-300"
-                  onClick={() => removeDebt(d.id)}
+                  aria-label="Hapus"
+                  onClick={() => {
+                    if (confirmDelete(`utang “${d.name}”`)) {
+                      void removeDebt(d.id)
+                    }
+                  }}
                 >
                   <i className="iconoir-trash text-base" aria-hidden />
                 </button>

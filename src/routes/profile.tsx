@@ -1,8 +1,13 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { UserAvatar } from '../components/UserAvatar'
 import { Btn, GlassCard, MonoLabel } from '../components/ui'
-import { logout } from '../lib/auth'
+import {
+  getUserDisplayName,
+  signOut,
+} from '../lib/auth'
 import { isSupabaseConfigured } from '../lib/supabase'
 import { resetToSeed } from '../lib/store'
+import { useAuth } from '../lib/use-auth'
 import { useFinance } from '../lib/use-finance'
 
 export const Route = createFileRoute('/profile')({ component: ProfilePage })
@@ -10,6 +15,9 @@ export const Route = createFileRoute('/profile')({ component: ProfilePage })
 function ProfilePage() {
   const navigate = useNavigate()
   const data = useFinance()
+  const { user } = useAuth()
+  const name = getUserDisplayName(user)
+  const email = user?.email ?? '—'
 
   return (
     <>
@@ -21,12 +29,15 @@ function ProfilePage() {
       </div>
 
       <div className="mt-6 flex items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-md bg-gradient-to-br from-[#6fe6cf] to-[#34a893] font-display text-2xl font-bold text-[#08211c] shadow-soft">
-          M
-        </div>
-        <div>
-          <div className="font-display text-lg font-semibold">Meridian User</div>
-          <div className="text-sm text-ink-dim">Auth PIN · single device</div>
+        <UserAvatar size="lg" />
+        <div className="min-w-0">
+          <div className="truncate font-display text-lg font-semibold">
+            {name}
+          </div>
+          <div className="truncate text-sm text-ink-dim">{email}</div>
+          <div className="mt-1 font-mono text-[11px] text-ink-faint">
+            Google · Supabase Auth
+          </div>
         </div>
       </div>
 
@@ -35,13 +46,13 @@ function ProfilePage() {
           <div className="flex items-center justify-between text-sm">
             <span className="text-ink-dim">Mode data</span>
             <span className="font-mono font-semibold text-teal">
-              {isSupabaseConfigured ? 'Supabase' : 'LocalStorage'}
+              {isSupabaseConfigured ? 'Supabase (per user)' : 'LocalStorage'}
             </span>
           </div>
           <p className="mt-2 text-xs text-ink-faint">
             {isSupabaseConfigured
-              ? 'Terhubung ke Supabase. Pastikan schema sudah di-apply.'
-              : 'Belum set VITE_SUPABASE_URL / ANON_KEY — data disimpan di browser. Lihat supabase/schema.sql.'}
+              ? 'Data terikat ke user_id akun Google. RLS: hanya kamu yang bisa akses baris milikmu.'
+              : 'Supabase belum di-set — data lokal per browser. Login Google butuh VITE_SUPABASE_*.'}
           </p>
         </GlassCard>
 
@@ -72,24 +83,29 @@ function ProfilePage() {
           variant="ghost"
           className="w-full"
           onClick={() => {
-            if (confirm('Reset data ke contoh seed?')) resetToSeed()
+            if (
+              confirm(
+                'Reset data demo lokal untuk akun ini? Data di Supabase tidak dihapus otomatis.',
+              )
+            ) {
+              resetToSeed()
+            }
           }}
         >
           <i className="iconoir-refresh" aria-hidden />
-          Reset data demo
+          Reset data demo (lokal)
         </Btn>
 
         <Btn
           variant="danger"
           className="w-full"
-          onClick={() => {
-            logout()
+          onClick={async () => {
+            await signOut()
             navigate({ to: '/' })
-            window.location.reload()
           }}
         >
           <i className="iconoir-log-out" aria-hidden />
-          Keluar (lock PIN)
+          Keluar
         </Btn>
       </div>
     </>

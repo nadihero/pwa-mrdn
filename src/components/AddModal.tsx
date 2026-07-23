@@ -103,14 +103,21 @@ function AllocationForm({
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
 
+  const [error, setError] = useState('')
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const n = parseAmountInput(amount)
     if (!label.trim() || n <= 0) return
     setBusy(true)
-    await addAllocation({ label, amount: n, note })
-    setBusy(false)
-    onDone()
+    setError('')
+    try {
+      await addAllocation({ label, amount: n, note })
+      onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menyimpan')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -139,6 +146,11 @@ function AllocationForm({
           placeholder="Opsional"
         />
       </Field>
+      {error && (
+        <p className="text-[13px] text-red-300" role="alert">
+          {error}
+        </p>
+      )}
       <div className="flex gap-2 pt-2">
         <Btn variant="ghost" onClick={onBack} className="flex-1">
           Kembali
@@ -165,20 +177,27 @@ function SubscriptionForm({
     () => new Date().toISOString().slice(0, 10),
   )
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const n = parseAmountInput(amount)
     if (!name.trim() || n <= 0) return
     setBusy(true)
-    await addSubscription({
-      name,
-      amount: n,
-      cycle,
-      start_date: start,
-    })
-    setBusy(false)
-    onDone()
+    setError('')
+    try {
+      await addSubscription({
+        name,
+        amount: n,
+        cycle,
+        start_date: start,
+      })
+      onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menyimpan')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -219,6 +238,11 @@ function SubscriptionForm({
           required
         />
       </Field>
+      {error && (
+        <p className="text-[13px] text-red-300" role="alert">
+          {error}
+        </p>
+      )}
       <div className="flex gap-2 pt-2">
         <Btn variant="ghost" onClick={onBack} className="flex-1">
           Kembali
@@ -245,15 +269,22 @@ function DebtForm({
   )
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     const n = parseAmountInput(amount)
     if (!name.trim() || n <= 0) return
     setBusy(true)
-    await addDebt({ name, amount: n, deadline, note })
-    setBusy(false)
-    onDone()
+    setError('')
+    try {
+      await addDebt({ name, amount: n, deadline, note })
+      onDone()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Gagal menyimpan')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -289,6 +320,11 @@ function DebtForm({
           onChange={(e) => setNote(e.target.value)}
         />
       </Field>
+      {error && (
+        <p className="text-[13px] text-red-300" role="alert">
+          {error}
+        </p>
+      )}
       <div className="flex gap-2 pt-2">
         <Btn variant="ghost" onClick={onBack} className="flex-1">
           Kembali

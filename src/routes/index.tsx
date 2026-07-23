@@ -14,6 +14,7 @@ import {
   formatRpShort,
   greeting,
 } from '../lib/format'
+import { getUserDisplayName } from '../lib/auth'
 import {
   allocationsByLabel,
   deadlineAlerts,
@@ -22,6 +23,7 @@ import {
   sumAllocationsInPeriod,
 } from '../lib/store'
 import type { PeriodKey } from '../lib/types'
+import { useAuth } from '../lib/use-auth'
 import { useFinance } from '../lib/use-finance'
 
 export const Route = createFileRoute('/')({ component: Dashboard })
@@ -34,6 +36,8 @@ const periods: { key: PeriodKey; label: string }[] = [
 
 function Dashboard() {
   const data = useFinance()
+  const { user } = useAuth()
+  const firstName = getUserDisplayName(user).split(/\s+/)[0] || 'kamu'
   const [period, setPeriod] = useState<PeriodKey>('month')
   const total = sumAllocationsInPeriod(data.allocations, period)
   const byLabel = allocationsByLabel(data.allocations, period)
@@ -48,7 +52,7 @@ function Dashboard() {
       <div>
         <MonoLabel>Meridian · Keuangan</MonoLabel>
         <h1 className="mt-1.5 font-display text-[clamp(22px,3vw,30px)] font-bold">
-          {greeting()}, <span className="text-amber">Asdar</span>
+          {greeting()}, <span className="text-amber">{firstName}</span>
         </h1>
       </div>
 

@@ -2,8 +2,8 @@
 
 Build a full-stack **TanStack Start** PWA app, **Mobile First**
 
-- Auth: single PIN (`00000`)
-- Database: **Supabase** (fallback LocalStorage if env not set)
+- Auth: **Google only** (Supabase OAuth) — single gate, no email/password form
+- Database: **Supabase** per `user_id` + RLS (local mirror fallback)
 - UI reference: **`index-cdn.html`** (shell, tokens, nav patterns)
 
 ## Stack

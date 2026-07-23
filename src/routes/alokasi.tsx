@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { EmptyState, MonoLabel, SectionHeader } from '../components/ui'
+import { confirmDelete } from '../lib/confirm'
 import { formatDateId, formatRp } from '../lib/format'
 import { removeAllocation } from '../lib/store'
 import { useFinance } from '../lib/use-finance'
@@ -65,7 +66,11 @@ function AlokasiPage() {
                 type="button"
                 className="text-ink-faint hover:text-red-300"
                 aria-label="Hapus"
-                onClick={() => removeAllocation(a.id)}
+                onClick={() => {
+                  if (confirmDelete(`alokasi “${a.label}”`)) {
+                    void removeAllocation(a.id)
+                  }
+                }}
               >
                 <i className="iconoir-trash text-base" aria-hidden />
               </button>

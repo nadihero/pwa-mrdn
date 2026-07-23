@@ -5,6 +5,7 @@ import {
   Pill,
   SectionHeader,
 } from '../components/ui'
+import { confirmDelete } from '../lib/confirm'
 import { formatDateId, formatRp, formatRpShort } from '../lib/format'
 import {
   monthlySubscriptionCost,
@@ -107,7 +108,12 @@ function SubscriptionPage() {
                 <button
                   type="button"
                   className="text-ink-faint hover:text-red-300"
-                  onClick={() => removeSubscription(s.id)}
+                  aria-label="Hapus"
+                  onClick={() => {
+                    if (confirmDelete(`subscription “${s.name}”`)) {
+                      void removeSubscription(s.id)
+                    }
+                  }}
                 >
                   <i className="iconoir-trash text-base" aria-hidden />
                 </button>

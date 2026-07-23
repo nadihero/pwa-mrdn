@@ -1,5 +1,6 @@
-import { supabase, isSupabaseConfigured } from './supabase'
+import { getUserId } from './auth'
 import { seedData } from './seed'
+import { isSupabaseConfigured, supabase } from './supabase'
 import type {
   Allocation,
   Debt,
@@ -8,28 +9,34 @@ import type {
   Subscription,
 } from './types'
 
-const STORAGE_KEY = 'meridian_finance_v1'
+const STORAGE_PREFIX = 'meridian_finance_v1'
 
 type Listener = () => void
 
 let cache: FinanceData | null = null
+let cacheUserId: string | null = null
 const listeners = new Set<Listener>()
 
 function uid(prefix: string) {
   return `${prefix}_${crypto.randomUUID().slice(0, 8)}`
 }
 
+function storageKey(userId: string) {
+  return `${STORAGE_PREFIX}:${userId}`
+}
+
 function emptyData(): FinanceData {
   return { allocations: [], subscriptions: [], debts: [] }
 }
 
-function loadLocal(): FinanceData {
+function loadLocal(userId: string): FinanceData {
   if (typeof window === 'undefined') return emptyData()
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(storageKey(userId))
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(seedData))
-      return structuredClone(seedData)
+      const seeded = structuredClone(seedData)
+      localStorage.setItem(storageKey(userId), JSON.stringify(seeded))
+      return seeded
     }
     return JSON.parse(raw) as FinanceData
   } catch {
@@ -37,16 +44,28 @@ function loadLocal(): FinanceData {
   }
 }
 
-function saveLocal(data: FinanceData) {
+function saveLocal(userId: string, data: FinanceData) {
   cache = data
+  cacheUserId = userId
   if (typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    localStorage.setItem(storageKey(userId), JSON.stringify(data))
   }
   listeners.forEach((l) => l())
 }
 
+function requireUserId(): string {
+  const id = getUserId()
+  if (!id) throw new Error('Belum login')
+  return id
+}
+
 function getData(): FinanceData {
-  if (!cache) cache = loadLocal()
+  const userId = getUserId()
+  if (!userId) return emptyData()
+  if (!cache || cacheUserId !== userId) {
+    cache = loadLocal(userId)
+    cacheUserId = userId
+  }
   return cache
 }
 
@@ -63,15 +82,30 @@ export function getServerSnapshot(): FinanceData {
   return emptyData()
 }
 
-async function pullFromSupabase(): Promise<FinanceData | null> {
+async function pullFromSupabase(userId: string): Promise<FinanceData | null> {
   if (!supabase) return null
   const [a, s, d] = await Promise.all([
-    supabase.from('allocations').select('*').order('created_at', { ascending: false }),
-    supabase.from('subscriptions').select('*').order('created_at', { ascending: false }),
-    supabase.from('debts').select('*').order('deadline', { ascending: true }),
+    supabase
+      .from('allocations')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('debts')
+      .select('*')
+      .eq('user_id', userId)
+      .order('deadline', { ascending: true }),
   ])
   if (a.error || s.error || d.error) {
-    console.warn('Supabase pull failed, using local', a.error || s.error || d.error)
+    console.warn(
+      'Supabase pull failed, using local',
+      a.error || s.error || d.error,
+    )
     return null
   }
   return {
@@ -81,17 +115,42 @@ async function pullFromSupabase(): Promise<FinanceData | null> {
   }
 }
 
-export async function hydrateStore() {
-  if (isSupabaseConfigured) {
-    const remote = await pullFromSupabase()
+export async function hydrateStore(userId?: string) {
+  const uid = userId ?? getUserId()
+  if (!uid) {
+    cache = emptyData()
+    cacheUserId = null
+    listeners.forEach((l) => l())
+    return
+  }
+
+  if (isSupabaseConfigured && supabase) {
+    const remote = await pullFromSupabase(uid)
     if (remote) {
+      // Prefer remote when available; keep a local mirror for offline read
       cache = remote
+      cacheUserId = uid
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(storageKey(uid), JSON.stringify(remote))
+      }
       listeners.forEach((l) => l())
       return
     }
   }
-  cache = loadLocal()
+
+  cache = loadLocal(uid)
+  cacheUserId = uid
   listeners.forEach((l) => l())
+}
+
+async function remoteInsert(table: string, row: Record<string, unknown>) {
+  if (!supabase || !isSupabaseConfigured) return { ok: true as const }
+  const { error } = await supabase.from(table).insert(row)
+  if (error) {
+    console.warn(`insert ${table}`, error)
+    return { ok: false as const, error }
+  }
+  return { ok: true as const }
 }
 
 export async function addAllocation(input: {
@@ -99,27 +158,37 @@ export async function addAllocation(input: {
   amount: number
   note?: string
 }) {
-  const row: Allocation = {
+  const userId = requireUserId()
+  const row: Allocation & { user_id: string } = {
     id: uid('a'),
     label: input.label.trim(),
     amount: input.amount,
     note: input.note?.trim() || undefined,
     created_at: new Date().toISOString(),
+    user_id: userId,
   }
 
-  if (supabase) {
-    const { error } = await supabase.from('allocations').insert(row)
-    if (error) console.warn(error)
+  const remote = await remoteInsert('allocations', row)
+  if (isSupabaseConfigured && !remote.ok) {
+    throw new Error(remote.error?.message || 'Gagal simpan alokasi ke server')
   }
 
   const data = getData()
-  saveLocal({ ...data, allocations: [row, ...data.allocations] })
+  saveLocal(userId, { ...data, allocations: [row, ...data.allocations] })
 }
 
 export async function removeAllocation(id: string) {
-  if (supabase) await supabase.from('allocations').delete().eq('id', id)
+  const userId = requireUserId()
+  if (supabase && isSupabaseConfigured) {
+    const { error } = await supabase
+      .from('allocations')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId)
+    if (error) throw new Error(error.message)
+  }
   const data = getData()
-  saveLocal({
+  saveLocal(userId, {
     ...data,
     allocations: data.allocations.filter((x) => x.id !== id),
   })
@@ -131,7 +200,8 @@ export async function addSubscription(input: {
   cycle: 'monthly' | 'yearly'
   start_date: string
 }) {
-  const row: Subscription = {
+  const userId = requireUserId()
+  const row: Subscription & { user_id: string } = {
     id: uid('s'),
     name: input.name.trim(),
     amount: input.amount,
@@ -139,36 +209,50 @@ export async function addSubscription(input: {
     start_date: input.start_date,
     active: true,
     created_at: new Date().toISOString(),
+    user_id: userId,
   }
 
-  if (supabase) {
-    const { error } = await supabase.from('subscriptions').insert(row)
-    if (error) console.warn(error)
+  const remote = await remoteInsert('subscriptions', row)
+  if (isSupabaseConfigured && !remote.ok) {
+    throw new Error(
+      remote.error?.message || 'Gagal simpan subscription ke server',
+    )
   }
 
   const data = getData()
-  saveLocal({ ...data, subscriptions: [row, ...data.subscriptions] })
+  saveLocal(userId, { ...data, subscriptions: [row, ...data.subscriptions] })
 }
 
 export async function toggleSubscription(id: string) {
+  const userId = requireUserId()
   const data = getData()
   const next = data.subscriptions.map((s) =>
     s.id === id ? { ...s, active: !s.active } : s,
   )
   const updated = next.find((s) => s.id === id)
-  if (supabase && updated) {
-    await supabase
+  if (supabase && isSupabaseConfigured && updated) {
+    const { error } = await supabase
       .from('subscriptions')
       .update({ active: updated.active })
       .eq('id', id)
+      .eq('user_id', userId)
+    if (error) throw new Error(error.message)
   }
-  saveLocal({ ...data, subscriptions: next })
+  saveLocal(userId, { ...data, subscriptions: next })
 }
 
 export async function removeSubscription(id: string) {
-  if (supabase) await supabase.from('subscriptions').delete().eq('id', id)
+  const userId = requireUserId()
+  if (supabase && isSupabaseConfigured) {
+    const { error } = await supabase
+      .from('subscriptions')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId)
+    if (error) throw new Error(error.message)
+  }
   const data = getData()
-  saveLocal({
+  saveLocal(userId, {
     ...data,
     subscriptions: data.subscriptions.filter((x) => x.id !== id),
   })
@@ -180,7 +264,8 @@ export async function addDebt(input: {
   deadline: string
   note?: string
 }) {
-  const row: Debt = {
+  const userId = requireUserId()
+  const row: Debt & { user_id: string } = {
     id: uid('d'),
     name: input.name.trim(),
     amount: input.amount,
@@ -188,33 +273,48 @@ export async function addDebt(input: {
     paid: false,
     note: input.note?.trim() || undefined,
     created_at: new Date().toISOString(),
+    user_id: userId,
   }
 
-  if (supabase) {
-    const { error } = await supabase.from('debts').insert(row)
-    if (error) console.warn(error)
+  const remote = await remoteInsert('debts', row)
+  if (isSupabaseConfigured && !remote.ok) {
+    throw new Error(remote.error?.message || 'Gagal simpan utang ke server')
   }
 
   const data = getData()
-  saveLocal({ ...data, debts: [row, ...data.debts] })
+  saveLocal(userId, { ...data, debts: [row, ...data.debts] })
 }
 
 export async function toggleDebtPaid(id: string) {
+  const userId = requireUserId()
   const data = getData()
   const next = data.debts.map((d) =>
     d.id === id ? { ...d, paid: !d.paid } : d,
   )
   const updated = next.find((d) => d.id === id)
-  if (supabase && updated) {
-    await supabase.from('debts').update({ paid: updated.paid }).eq('id', id)
+  if (supabase && isSupabaseConfigured && updated) {
+    const { error } = await supabase
+      .from('debts')
+      .update({ paid: updated.paid })
+      .eq('id', id)
+      .eq('user_id', userId)
+    if (error) throw new Error(error.message)
   }
-  saveLocal({ ...data, debts: next })
+  saveLocal(userId, { ...data, debts: next })
 }
 
 export async function removeDebt(id: string) {
-  if (supabase) await supabase.from('debts').delete().eq('id', id)
+  const userId = requireUserId()
+  if (supabase && isSupabaseConfigured) {
+    const { error } = await supabase
+      .from('debts')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId)
+    if (error) throw new Error(error.message)
+  }
   const data = getData()
-  saveLocal({ ...data, debts: data.debts.filter((x) => x.id !== id) })
+  saveLocal(userId, { ...data, debts: data.debts.filter((x) => x.id !== id) })
 }
 
 export function monthlySubscriptionCost(subs: Subscription[]) {
@@ -282,5 +382,6 @@ export function deadlineAlerts(debts: Debt[], withinDays = 7) {
 }
 
 export function resetToSeed() {
-  saveLocal(structuredClone(seedData))
+  const userId = requireUserId()
+  saveLocal(userId, structuredClone(seedData))
 }

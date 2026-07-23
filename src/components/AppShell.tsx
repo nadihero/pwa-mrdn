@@ -2,24 +2,12 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { useEffect, useState, type ReactNode } from 'react'
 import { deadlineAlerts } from '../lib/store'
 import { useFinance } from '../lib/use-finance'
-import { bottomNavItems, navItems, profileItem } from './nav-items'
 import { AddModal } from './AddModal'
+import { bottomNavItems, navItems, profileItem } from './nav-items'
+import { UserAvatar } from './UserAvatar'
 
-function NavIcon({
-  icon,
-  active,
-  className = '',
-}: {
-  icon: string
-  active?: boolean
-  className?: string
-}) {
-  return (
-    <i
-      className={`${icon} ${className} ${active ? '' : ''}`}
-      aria-hidden
-    />
-  )
+function NavIcon({ icon, className = '' }: { icon: string; className?: string }) {
+  return <i className={`${icon} ${className}`} aria-hidden />
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -43,7 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const allNav = [...navItems, profileItem]
 
   return (
-    <div className="body-bg min-h-screen font-body font-book text-ink antialiased">
+    <div className="body-bg min-h-dvh font-body font-book text-ink antialiased">
       {/* Overlay */}
       <div
         className={`fixed inset-0 z-[48] bg-[rgba(5,6,7,0.6)] backdrop-blur-[2px] transition-opacity duration-[250ms] ${
@@ -113,24 +101,45 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link
             to="/alerts"
             className="glass shadow-soft inner-edge relative flex h-10 w-10 shrink-0 items-center justify-center rounded-sm text-ink-dim"
+            aria-label="Notifikasi"
           >
             <i className="iconoir-bell text-[17px]" aria-hidden />
             {alertCount > 0 && (
-              <span className="absolute -top-[3px] -right-[3px] flex h-4 w-4 items-center justify-center rounded-full border-2 border-bg bg-amber font-mono text-[9px] font-semibold text-[#181008]">
-                {alertCount}
+              <span className="absolute -top-[3px] -right-[3px] flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-bg bg-amber px-0.5 font-mono text-[9px] font-semibold text-[#181008]">
+                {alertCount > 9 ? '9+' : alertCount}
               </span>
             )}
           </Link>
-          <Link
-            to="/profile"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-sm bg-gradient-to-br from-[#6fe6cf] to-[#34a893] font-display text-sm font-bold text-[#08211c] shadow-soft"
-          >
-            M
+          <Link to="/profile" aria-label="Profil">
+            <UserAvatar size="md" />
           </Link>
         </div>
       </header>
 
-      <div className="flex min-h-[calc(100vh-0px)] min-[900px]:min-h-[calc(100vh-72px)]">
+      {/* Mobile top actions — fixed so content never overlaps */}
+      <div
+        className="fixed top-0 right-0 left-0 z-30 flex h-14 items-center justify-end gap-2 bg-gradient-to-b from-[rgba(14,16,19,0.92)] to-transparent px-3.5 pt-[env(safe-area-inset-top)] min-[900px]:hidden sm:px-6"
+      >
+        <Link
+          to="/alerts"
+          className={`glass shadow-soft inner-edge relative flex h-9 w-9 items-center justify-center rounded-sm ${
+            isActive('/alerts') ? 'text-amber' : 'text-ink-dim'
+          }`}
+          aria-label="Notifikasi"
+        >
+          <i className="iconoir-bell text-[17px]" aria-hidden />
+          {alertCount > 0 && (
+            <span className="absolute -top-[3px] -right-[3px] flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-bg bg-amber px-0.5 font-mono text-[9px] font-semibold text-[#181008]">
+              {alertCount > 9 ? '9+' : alertCount}
+            </span>
+          )}
+        </Link>
+        <Link to="/profile" aria-label="Profil">
+          <UserAvatar size="sm" />
+        </Link>
+      </div>
+
+      <div className="flex min-h-dvh min-[900px]:min-h-[calc(100dvh-72px)]">
         {/* Rail — desktop */}
         <nav className="border-white/5 hidden w-rail shrink-0 flex-col items-center gap-1.5 border-r py-6 min-[900px]:flex">
           {allNav.map((item) => {
@@ -152,36 +161,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        <main className="relative min-w-0 flex-1 px-3.5 pt-5 pb-[108px] sm:px-6 sm:pt-7 min-[900px]:pb-20">
-          {/* Mobile: notifications + profile (top-right) */}
-          <div className="absolute top-4 right-3.5 z-10 flex items-center gap-2 min-[900px]:hidden sm:right-6">
-            <Link
-              to="/alerts"
-              className={`glass shadow-soft inner-edge relative flex h-9 w-9 items-center justify-center rounded-sm ${
-                isActive('/alerts') ? 'text-amber' : 'text-ink-dim'
-              }`}
-              aria-label="Notifikasi"
-            >
-              <i className="iconoir-bell text-[21px]" aria-hidden />
-              {alertCount > 0 && (
-                <span className="absolute -top-[3px] -right-[3px] flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-bg bg-amber px-0.5 font-mono text-[9px] font-semibold text-[#181008]">
-                  {alertCount > 9 ? '9+' : alertCount}
-                </span>
-              )}
-            </Link>
-            <Link
-              to="/profile"
-              className="flex h-9 w-9 items-center justify-center rounded-sm bg-gradient-to-br from-[#6fe6cf] to-[#34a893] font-display text-xs font-bold text-[#08211c] shadow-soft"
-              aria-label="Profil"
-            >
-              M
-            </Link>
-          </div>
+        <main className="min-w-0 flex-1 px-3.5 pt-[calc(3.75rem+env(safe-area-inset-top))] pb-[108px] sm:px-6 min-[900px]:pt-7 min-[900px]:pb-20">
           <div className="mx-auto max-w-[1120px]">{children}</div>
         </main>
       </div>
 
-      {/* Bottom nav — mobile (no alerts; alerts are top-right) */}
+      {/* Bottom nav — mobile */}
       <nav
         className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t border-white/5 bg-[rgba(14,17,20,0.92)] px-1 pt-1.5 pb-[max(0.35rem,env(safe-area-inset-bottom))] backdrop-blur-[20px] backdrop-saturate-[1.6] min-[900px]:hidden"
         aria-label="Navigasi utama"
@@ -205,11 +190,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         })}
       </nav>
 
-      {/* FAB — raised on mobile so it clears bottom nav */}
+      {/* FAB */}
       <button
         type="button"
         onClick={() => setAddOpen(true)}
-        className="shadow-fab fixed right-5 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] z-[25] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#ffa168] to-amber text-[#1a0f07] min-[900px]:right-6 min-[900px]:bottom-7"
+        className="shadow-fab fixed right-5 bottom-[calc(7.25rem+env(safe-area-inset-bottom,0px))] z-[25] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#ffa168] to-amber text-[#1a0f07] min-[900px]:right-6 min-[900px]:bottom-7"
         aria-label="Tambah"
       >
         <i className="iconoir-plus text-[22px]" aria-hidden />
@@ -225,10 +210,8 @@ function Brand({ showOs = false }: { showOs?: boolean }) {
     <div className="flex items-center gap-2.5 font-display text-base font-bold">
       <span className="h-2 w-2 animate-pulse-soft rounded-sm bg-amber shadow-[0_0_8px_rgba(255,138,76,0.7)]" />
       MERIDIAN
-      {showOs ? (
-        <span className="font-medium text-ink-faint max-sm:hidden"></span>
-      ) : (
-        <span className="font-medium text-ink-faint"></span>
+      {showOs && (
+        <span className="font-medium text-ink-faint max-sm:hidden">_FIN</span>
       )}
     </div>
   )

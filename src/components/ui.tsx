@@ -213,10 +213,15 @@ export function Modal({
     if (!open) return
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
     return () => {
       document.body.style.overflow = prev
+      document.removeEventListener('keydown', onKey)
     }
-  }, [open])
+  }, [open, onClose])
 
   if (!open) return null
 

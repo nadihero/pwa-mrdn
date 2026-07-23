@@ -11,7 +11,7 @@ UI shell follows the static reference `index-cdn.html` (dark glass ops theme).
 
 | Feature | Behavior |
 |---------|----------|
-| **PIN lock** | Single PIN `00000` stored in `sessionStorage` for the browser session |
+| **Google login** | Single gate — “Lanjutkan dengan Google” (Supabase OAuth), no forms |
 | **Dashboard** | Greeting, KPI chips, allocation bars, period switcher (7 days / month / 6 months), nearest debts |
 | **Alokasi** | Label money buckets (e.g. Kost, Bensin) — not line-item transactions |
 | **Subscription** | Monthly or yearly; cycle anchored on `start_date`; active toggle; monthly/yearly estimates |
@@ -36,7 +36,9 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and enter PIN **`00000`**.
+Open [http://localhost:3000](http://localhost:3000) → **Lanjutkan dengan Google**.
+
+Requires Supabase env + Google provider (see below).
 
 ```bash
 npm run build    # production client + SSR build
@@ -155,13 +157,19 @@ Defined in `src/styles.css` (`@theme`) and used as Tailwind utilities (`bg-amber
 
 ---
 
-## Supabase (optional)
+## Auth — Google only (Supabase)
 
-Without env vars the app is fully usable offline via LocalStorage.
+Login screen has **one action**: Continue with Google. No email/password form.
 
-1. Create a Supabase project  
-2. Run [`supabase/schema.sql`](./supabase/schema.sql) in the SQL Editor  
-3. Copy env template and fill keys:
+### Setup
+
+1. Create a [Supabase](https://supabase.com) project  
+2. **Authentication → Providers → Google** — enable; paste Google Cloud OAuth Client ID + Secret  
+3. **Authentication → URL Configuration** — add Redirect URLs:
+   - `http://localhost:3000/**`
+   - `https://YOUR_VERCEL_DOMAIN/**`
+4. Run [`supabase/schema.sql`](./supabase/schema.sql) (tables + `user_id` + RLS)  
+5. Env:
 
 ```bash
 cp .env.example .env
@@ -172,21 +180,22 @@ VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 VITE_SUPABASE_ANON_KEY=your_anon_key
 ```
 
-### Tables
+Also set the same vars in **Vercel → Environment Variables**, then redeploy.
 
-- `allocations` — `id`, `label`, `amount`, `note`, `created_at`  
-- `subscriptions` — `id`, `name`, `amount`, `cycle` (`monthly` \| `yearly`), `start_date`, `active`, `created_at`  
-- `debts` — `id`, `name`, `amount`, `deadline`, `paid`, `note`, `created_at`  
+### Tables (per user)
 
-Current policies allow anon read/write (single-PIN, single-user demo). Tighten RLS before multi-user production.
+- `allocations` — + `user_id`  
+- `subscriptions` — + `user_id`  
+- `debts` — + `user_id`  
 
----
+RLS: `authenticated` users only access rows where `auth.uid() = user_id`.
 
-## Auth notes
+### Notes
 
-- PIN is **client-side only** (`00000` hardcoded in `src/lib/auth.ts`) — fine for a personal local/demo vault, **not** real security  
-- Logout clears the session flag and reloads the app  
-- Profile → **Reset data demo** restores seed from `src/lib/seed.ts`
+- Session managed by Supabase JS (persisted in browser)  
+- Logout = `supabase.auth.signOut()`  
+- LocalStorage mirrors data per user id for offline read fallback  
+- Profile → Reset demo only resets **local** seed for that user  
 
 ---
 
