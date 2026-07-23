@@ -20,10 +20,25 @@ export function formatRpShort(amount: number) {
   return formatRp(amount)
 }
 
+/** Strip non-digits and parse to integer rupiah. */
 export function parseAmountInput(raw: string): number {
   const cleaned = raw.replace(/[^\d]/g, '')
   if (!cleaned) return 0
-  return Number(cleaned)
+  const n = Number(cleaned)
+  return Number.isFinite(n) ? n : 0
+}
+
+/**
+ * Format nominal while typing (id-ID thousand separators).
+ * "1000000" → "1.000.000"
+ */
+export function formatAmountTyping(raw: string): string {
+  const cleaned = raw.replace(/[^\d]/g, '')
+  if (!cleaned) return ''
+  // avoid Number overflow / leading zeros issues for long strings
+  const normalized = cleaned.replace(/^0+(?=\d)/, '')
+  if (!normalized) return '0'
+  return new Intl.NumberFormat('id-ID').format(Number(normalized))
 }
 
 export function daysUntil(isoDate: string) {

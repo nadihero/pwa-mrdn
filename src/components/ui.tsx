@@ -1,4 +1,10 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react'
+import {
+  useEffect,
+  type ButtonHTMLAttributes,
+  type InputHTMLAttributes,
+  type ReactNode,
+} from 'react'
+import { formatAmountTyping } from '../lib/format'
 
 export function GlassCard({
   children,
@@ -77,11 +83,57 @@ export function Field({
   )
 }
 
+// text-base (16px) prevents iOS Safari auto-zoom on focus
 const inputClass =
-  'w-full rounded-sm border border-white/5 bg-white/[0.04] px-3.5 py-3 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-amber/40 focus:ring-1 focus:ring-amber/30'
+  'w-full rounded-sm border border-white/5 bg-white/[0.04] px-3.5 py-3 text-base text-ink outline-none placeholder:text-ink-faint focus:border-amber/40 focus:ring-1 focus:ring-amber/30'
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={`${inputClass} ${props.className ?? ''}`} />
+  return (
+    <input {...props} className={`${inputClass} ${props.className ?? ''}`} />
+  )
+}
+
+/** Rupiah amount field with live thousand-separator formatting. */
+export function AmountInput({
+  value,
+  onChange,
+  placeholder = '1.000.000',
+  required,
+  className = '',
+  id,
+  name,
+  autoFocus,
+}: {
+  value: string
+  onChange: (formatted: string) => void
+  placeholder?: string
+  required?: boolean
+  className?: string
+  id?: string
+  name?: string
+  autoFocus?: boolean
+}) {
+  return (
+    <div className="relative">
+      <span className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 font-mono text-sm text-ink-faint">
+        Rp
+      </span>
+      <input
+        id={id}
+        name={name}
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        enterKeyHint="done"
+        required={required}
+        autoFocus={autoFocus}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(formatAmountTyping(e.target.value))}
+        className={`${inputClass} pl-11 font-mono tabular-nums ${className}`}
+      />
+    </div>
+  )
 }
 
 export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
@@ -99,7 +151,7 @@ export function TextArea(
   return (
     <textarea
       {...props}
-      className={`${inputClass} min-h-[80px] resize-y ${props.className ?? ''}`}
+      className={`${inputClass} min-h-[72px] resize-y ${props.className ?? ''}`}
     />
   )
 }
@@ -157,28 +209,56 @@ export function Modal({
   title: string
   children: ReactNode
 }) {
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [open])
+
   if (!open) return null
+
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+      style={{
+        paddingTop: 'max(1rem, env(safe-area-inset-top))',
+        paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+        paddingLeft: 'max(1rem, env(safe-area-inset-left))',
+        paddingRight: 'max(1rem, env(safe-area-inset-right))',
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
       <button
         type="button"
-        className="absolute inset-0 bg-[rgba(5,6,7,0.65)] backdrop-blur-[2px]"
+        className="absolute inset-0 bg-[rgba(5,6,7,0.72)] backdrop-blur-[3px]"
         aria-label="Tutup"
         onClick={onClose}
       />
-      <div className="relative z-10 max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-lg border border-white/5 bg-[#12151a] p-5 shadow-drawer sm:rounded-lg">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-display text-lg font-semibold">{title}</h3>
+      <div
+        className="relative z-10 flex w-full max-w-[min(100%,24rem)] flex-col overflow-hidden rounded-lg border border-white/5 bg-[#12151a] shadow-drawer"
+        style={{ maxHeight: 'min(88dvh, 36rem)' }}
+      >
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/5 px-4 py-3.5 sm:px-5">
+          <h3 className="truncate font-display text-base font-semibold sm:text-lg">
+            {title}
+          </h3>
           <button
             type="button"
             onClick={onClose}
-            className="glass flex h-9 w-9 items-center justify-center rounded-[10px] text-ink-dim"
+            className="glass flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-ink-dim"
             aria-label="Tutup"
           >
             <i className="iconoir-xmark text-base" aria-hidden />
           </button>
         </div>
-        {children}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
+          {children}
+        </div>
       </div>
     </div>
   )

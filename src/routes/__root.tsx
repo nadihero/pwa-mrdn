@@ -1,4 +1,5 @@
 import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import appCss from '../styles.css?url'
 import { AuthGate } from '../components/AuthGate'
 import { AppShell } from '../components/AppShell'
@@ -9,7 +10,8 @@ export const Route = createRootRoute({
       { charSet: 'utf-8' },
       {
         name: 'viewport',
-        content: 'width=device-width, initial-scale=1, viewport-fit=cover',
+        content:
+          'width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover',
       },
       { title: 'Meridian — Keuangan' },
       { name: 'theme-color', content: '#0e1013' },
@@ -57,9 +59,39 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   )
 }
 
+/** Lock pinch / multi-touch zoom for app-like mobile UX. */
+function ZoomLock() {
+  useEffect(() => {
+    document.documentElement.classList.add('no-zoom')
+    document.body.classList.add('no-zoom')
+
+    const blockMultiTouch = (e: TouchEvent) => {
+      if (e.touches.length > 1) e.preventDefault()
+    }
+    const blockGesture = (e: Event) => e.preventDefault()
+
+    document.addEventListener('touchmove', blockMultiTouch, { passive: false })
+    document.addEventListener('gesturestart', blockGesture)
+    document.addEventListener('gesturechange', blockGesture)
+    document.addEventListener('gestureend', blockGesture)
+
+    return () => {
+      document.documentElement.classList.remove('no-zoom')
+      document.body.classList.remove('no-zoom')
+      document.removeEventListener('touchmove', blockMultiTouch)
+      document.removeEventListener('gesturestart', blockGesture)
+      document.removeEventListener('gesturechange', blockGesture)
+      document.removeEventListener('gestureend', blockGesture)
+    }
+  }, [])
+
+  return null
+}
+
 function RootComponent() {
   return (
     <AuthGate>
+      <ZoomLock />
       <AppShell>
         <Outlet />
       </AppShell>

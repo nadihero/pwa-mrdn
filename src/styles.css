@@ -50,12 +50,23 @@
 
 * {
   box-sizing: border-box;
+  /* Reduce double-tap / pinch zoom feel on mobile */
+  touch-action: manipulation;
+}
+
+html {
+  /* App-like: lock layout width, no bounce-zoom side effects */
+  height: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html,
 body,
 #app {
   min-height: 100%;
+  min-height: 100dvh;
 }
 
 body {
@@ -65,6 +76,16 @@ body {
   font-family: var(--font-body);
   font-weight: 450;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+  /* Prevent iOS rubber-band revealing blank edges behind fixed UI */
+  position: relative;
+}
+
+/* Extra guard: block multi-touch pinch zoom where supported */
+html.no-zoom,
+body.no-zoom {
+  touch-action: pan-x pan-y;
 }
 
 .body-bg {

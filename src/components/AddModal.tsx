@@ -5,7 +5,7 @@ import {
   addDebt,
   addSubscription,
 } from '../lib/store'
-import { Btn, Field, Input, Modal, Select, TextArea } from './ui'
+import { AmountInput, Btn, Field, Input, Modal, Select, TextArea } from './ui'
 
 type Mode = 'pick' | 'alokasi' | 'subscription' | 'utang'
 
@@ -124,12 +124,11 @@ function AllocationForm({
           autoFocus
         />
       </Field>
-      <Field label="Jumlah (Rp)">
-        <Input
-          inputMode="numeric"
-          placeholder="1000000"
+      <Field label="Jumlah">
+        <AmountInput
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={setAmount}
+          placeholder="1.000.000"
           required
         />
       </Field>
@@ -193,12 +192,11 @@ function SubscriptionForm({
           autoFocus
         />
       </Field>
-      <Field label="Jumlah (Rp)">
-        <Input
-          inputMode="numeric"
-          placeholder="54990"
+      <Field label="Jumlah">
+        <AmountInput
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={setAmount}
+          placeholder="54.990"
           required
         />
       </Field>
@@ -269,12 +267,11 @@ function DebtForm({
           autoFocus
         />
       </Field>
-      <Field label="Jumlah (Rp)">
-        <Input
-          inputMode="numeric"
-          placeholder="250000"
+      <Field label="Jumlah">
+        <AmountInput
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={setAmount}
+          placeholder="250.000"
           required
         />
       </Field>
