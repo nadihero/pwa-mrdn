@@ -2,7 +2,7 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { useEffect, useState, type ReactNode } from 'react'
 import { deadlineAlerts } from '../lib/store'
 import { useFinance } from '../lib/use-finance'
-import { navItems, profileItem } from './nav-items'
+import { bottomNavItems, navItems, profileItem } from './nav-items'
 import { AddModal } from './AddModal'
 
 function NavIcon({
@@ -153,24 +153,40 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         <main className="relative min-w-0 flex-1 px-3.5 pt-5 pb-[108px] sm:px-6 sm:pt-7 min-[900px]:pb-20">
-          {/* Mobile profile shortcut (no topbar) */}
-          <Link
-            to="/profile"
-            className="absolute top-4 right-3.5 z-10 flex h-9 w-9 items-center justify-center rounded-sm bg-gradient-to-br from-[#6fe6cf] to-[#34a893] font-display text-xs font-bold text-[#08211c] shadow-soft min-[900px]:hidden sm:right-6"
-            aria-label="Profil"
-          >
-            M
-          </Link>
+          {/* Mobile: notifications + profile (top-right) */}
+          <div className="absolute top-4 right-3.5 z-10 flex items-center gap-2 min-[900px]:hidden sm:right-6">
+            <Link
+              to="/alerts"
+              className={`glass shadow-soft inner-edge relative flex h-9 w-9 items-center justify-center rounded-sm ${
+                isActive('/alerts') ? 'text-amber' : 'text-ink-dim'
+              }`}
+              aria-label="Notifikasi"
+            >
+              <i className="iconoir-bell text-[21px]" aria-hidden />
+              {alertCount > 0 && (
+                <span className="absolute -top-[3px] -right-[3px] flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-bg bg-amber px-0.5 font-mono text-[9px] font-semibold text-[#181008]">
+                  {alertCount > 9 ? '9+' : alertCount}
+                </span>
+              )}
+            </Link>
+            <Link
+              to="/profile"
+              className="flex h-9 w-9 items-center justify-center rounded-sm bg-gradient-to-br from-[#6fe6cf] to-[#34a893] font-display text-xs font-bold text-[#08211c] shadow-soft"
+              aria-label="Profil"
+            >
+              M
+            </Link>
+          </div>
           <div className="mx-auto max-w-[1120px]">{children}</div>
         </main>
       </div>
 
-      {/* Bottom nav — mobile */}
+      {/* Bottom nav — mobile (no alerts; alerts are top-right) */}
       <nav
         className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t border-white/5 bg-[rgba(14,17,20,0.92)] px-1 pt-1.5 pb-[max(0.35rem,env(safe-area-inset-bottom))] backdrop-blur-[20px] backdrop-saturate-[1.6] min-[900px]:hidden"
         aria-label="Navigasi utama"
       >
-        {navItems.map((item) => {
+        {bottomNavItems.map((item) => {
           const active = isActive(item.to)
           return (
             <Link
@@ -180,14 +196,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 active ? 'text-amber' : 'text-ink-faint'
               }`}
             >
-              <span className="relative">
-                <NavIcon icon={item.icon} className="text-xl" />
-                {item.to === '/alerts' && alertCount > 0 && (
-                  <span className="absolute -top-1 -right-2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber font-mono text-[8px] font-semibold text-[#181008]">
-                    {alertCount}
-                  </span>
-                )}
-              </span>
+              <NavIcon icon={item.icon} className="text-2xl" />
               <span className="font-mono text-[9px] font-semibold tracking-wide">
                 {item.label}
               </span>
@@ -196,11 +205,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         })}
       </nav>
 
-      {/* FAB */}
+      {/* FAB — raised on mobile so it clears bottom nav */}
       <button
         type="button"
         onClick={() => setAddOpen(true)}
-        className="shadow-fab fixed right-5 bottom-[5.75rem] z-[25] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#ffa168] to-amber text-[#1a0f07] min-[900px]:right-6 min-[900px]:bottom-7"
+        className="shadow-fab fixed right-5 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] z-[25] flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#ffa168] to-amber text-[#1a0f07] min-[900px]:right-6 min-[900px]:bottom-7"
         aria-label="Tambah"
       >
         <i className="iconoir-plus text-[22px]" aria-hidden />
